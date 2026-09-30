@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイマーアプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            background: #f0f0f0;
+        }
+
+        /* ========== iPad表示用（発表者画面） ========== */
+        .display-mode {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #ffffff;
+            transition: background-color 0.3s ease;
+        }
+
+        .display-mode.warning {
+            background-color: #ffeb3b;
+        }
+
+        .display-mode.timeout {
+            background-color: #f44336;
+        }
+
+        .timer-display {
+            font-size: clamp(80px, 25vw, 300px);
+            font-weight: bold;
+            color: #333;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            line-height: 1;
+        }
+
+        .display-mode.timeout .timer-display {
+            color: #fff;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .timer-label {
+            font-size: clamp(20px, 5vw, 48px);
+            color: #666;
+            margin-top: 20px;
+        }
+
+        .display-mode.timeout .timer-label {
+            color: #fff;
+        }
+
+        /* ========== タイムキーパー操作パネル ========== */
+        .control-mode {
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            background: #f9f9f9;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .control-mode h1 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-start {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background-color: #45a049;
+        }
+
+        .btn-start:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-pause {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .btn-pause:hover {
+            background-color: #e68900;
+        }
+
+        .btn-pause:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background-color: #da190b;
+        }
+
+        .btn-clear-history {
+            background-color: #9C27B0;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-clear-history:hover {
+            background-color: #7b1fa2;
+        }
+
+        .status-display {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1976d2;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .history-section {
+            margin-top: 30px;
+            border-top: 2px solid #ddd;
+            padding-top: 20px;
+        }
+
+        .history-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .history-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-time {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .history-status {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #f0f0f0;
+        }
+
+        .history-status.completed {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .history-status.timeout {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 600px) {
+            .control-mode {
+                padding: 20px;
+            }
+
+            .control-mode h1 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- iPad表示用（発表者画面） -->
+    <div class="display-mode hidden" id="displaySection">
+        <div class="timer-display" id="timerDisplay">00:00</div>
+        <div class="timer-label" id="timerLabel">準備完了</div>
+    </div>
+
+    <!-- タイムキーパー操作パネル -->
+    <div class="control-mode hidden" id="controlSection">
+        <h1>⏱️ タイムキーパー</h1>
+
+        <div class="status-display" id="statusDisplay">準備完了</div>
+
+        <div class="input-group">
+            <label for="minutesInput">分</label>
+            <input type="number" id="minutesInput" min="0" max="99" value="1" placeholder="分を入力">
+        </div>
+
+        <div class="input-group">
+            <label for="secondsInput">秒</label>
+            <input type="number" id="secondsInput" min="0" max="59" value="0" placeholder="秒を入力">
+        </div>
+
+        <div class="button-group">
+            <button class="btn-start" id="startBtn" onclick="startTimer()">スタート</button>
+            <button class="btn-pause" id="pauseBtn" onclick="pauseTimer()" disabled>一時停止</button>
+            <button class="btn-reset" id="resetBtn" onclick="resetTimer()">リセット</button>
+        </div>
+
+        <div class="history-section">
+            <h2>📋 タイマー履歴</h2>
+            <div class="history-list" id="historyList">
+                <div style="padding: 20px; text-align: center; color: #999;">
+                    履歴がありません
+                </div>
+            </div>
+            <button class="btn-clear-history" id="clearHistoryBtn" onclick="clearHistory()">履歴をクリア</button>
+        </div>
+    </div>
+
+    <script>
+        let totalSeconds = 0;
+        let remainingSeconds = 0;
+        let timerInterval = null;
+        let isRunning = false;
+        let timerHistory = [];
+        let isDisplayMode = false;
+
+        // URLパラメータから表示モードを判定
+        function initializeMode() {
+            const params = new URLSearchParams(window.location.search);
+            isDisplayMode = params.get('mode') === 'display';
+
+            if (isDisplayMode) {
+                document.getElementById('displaySection').classList.remove('hidden');
+                document.getElementById('controlSection').classList.add('hidden');
+            } else {
+                document.getElementById('displaySection').classList.add('hidden');
+                document.getElementById('controlSection').classList.remove('hidden');
+                loadHistory();
+            }
+        }
+
+        // 表示画面を更新（localStorageで同期）
+        function syncDisplay() {
+            if (isDisplayMode) {
+                const data = JSON.parse(localStorage.getItem('timerState') || '{}');
+                if (data.remainingSeconds !== undefined) {
+                    remainingSeconds = data.remainingSeconds;
+                    updateDisplayOnly();
+                }
+                if (data.isRunning && !timerInterval) {
+                    timerInterval = setInterval(updateTimer, 100);
+                } else if (!data.isRunning && timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+            }
+        }
+
+        // 表示画面用の更新（操作画面からの同期）
+        function updateDisplayOnly() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = Math.floor(remainingSeconds % 60);
+            const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+
+            const displaySection = document.getElementById('displaySection');
+            if (remainingSeconds <= 0) {
+                displaySection.classList.remove('warning');
+                displaySection.classList.add('timeout');
+            } else if (remainingSeconds <= 10) {
+                displaySection.classList.add('warning');
+                displaySection.classList.remove('timeout');
+            } else {
+                displaySection.classList.remove('warning', 'timeout');
+            }
+        }
+
+        // ローカルストレージから履歴を読み込む
+        function loadHistory() {
+            const saved = localStorage.getItem('timerHistory');
+            if (saved) {
+                timerHistory = JSON.parse(saved);
+                updateHistoryDisplay();
+            }
+        }
+
+        // 履歴を保存
+        function saveHistory() {
+            localStorage.setItem('timerHistory', JSON.stringify(timerHistory));
+        }
+
+        // 履歴表示を更新
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            if (timerHistory.length === 0) {
+                historyList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">履歴がありません</div>';
+                return;
+            }
+
+            historyList.innerHTML = timerHistory.map((item, index) => `
+                <div class="history-item">
+                    <div>
+                        <div class="history-time">${item.time}</div>
+                        <div style="font-size: 11px; color: #999;">${item.timestamp}</div>
+                    </div>
+                    <div class="history-status ${item.status}">${item.status === 'completed' ? '完了' : 'タイムオーバー'}</div>
+                </div>
+            `).reverse().join('');
+        }
+
+        // タイマー開始
+        function startTimer() {
+            if (isRunning) return;
+
+            const minutes = parseInt(document.getElementById('minutesInput').value) || 0;
+            const seconds = parseInt(document.getElementById('secondsInput').value) || 0;
+            totalSeconds = minutes * 60 + seconds;
+
+            if (totalSeconds <= 0) {
+                alert('1秒以上の時間を設定してください');
+                return;
+            }
+
+            remainingSeconds = totalSeconds;
+            isRunning = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('minutesInput').disabled = true;
+            document.getElementById('secondsInput').disabled = true;
+
+            // 状態をlocalStorageに保存（表示画面と同期）
+            saveTimerState();
+
+            timerInterval = setInterval(updateTimer, 100);
+        }
+
+        // タイマー状態を保存
+        function saveTimerState() {
+            localStorage.setItem('timerState', JSON.stringify({
+                remainingSeconds: remainingSeconds,
+                isRunning: isRunning,
+                totalSeconds: totalSeconds
+            }));
+        }
+
+        // タイマー更新
+        function updateTimer() {
+            remainingSeconds -= 0.1;
+
+            if (remainingSeconds <= 0) {
+                remainingSeconds = 0;
+                clearInterval(timerInterval);
+                timerInterval = null;
+                isRunning = false;
+                saveTimerState();
+                timerTimeout();
+                return;
+            }
+
+            updateDisplay();
+            saveTimerState();
+        }
+
+        // タイムオーバー
+        function timerTimeout() {
+            if (!isDisplayMode) {
+                document.getElementById('statusDisplay').textContent = 'タイムオーバー';
+            }
+
+            // 音声通知（オプション）
+            playNotificationSound();
+
+            // 履歴に記録
+            const now = new Date();
+            const timeStr = formatTime(totalSeconds);
+            timerHistory.push({
+                time: timeStr,
+                timestamp: now.toLocaleString('ja-JP'),
+                status: 'timeout'
+            });
+            saveHistory();
+            updateHistoryDisplay();
+
+            // ボタン状態をリセット
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('minutesInput').disabled = false;
+            document.getElementById('secondsInput').disabled = false;
+        }
+
+        // 一時停止
+        function pauseTimer() {
+            if (!isRunning) {
+                // 再開
+                isRunning = true;
+                document.getElementById('pauseBtn').textContent = '一時停止';
+                timerInterval = setInterval(updateTimer, 100);
+            } else {
+                // 一時停止
+                isRunning = false;
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('pauseBtn').textContent = '再開';
+            }
+            saveTimerState();
+        }
+
+        // リセット
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isRunning = false;
+            remainingSeconds = 0;
+            totalSeconds = 0;
+
+            if (!isDisplayMode) {
+                document.getElementById('statusDisplay').textContent = '準備完了';
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('pauseBtn').textContent = '一時停止';
+                document.getElementById('minutesInput').disabled = false;
+                document.getElementById('secondsInput').disabled = false;
+            }
+
+            document.getElementById('timerDisplay').textContent = '00:00';
+            document.getElementById('timerLabel').textContent = '準備完了';
+            document.getElementById('displaySection').classList.remove('warning', 'timeout');
+
+            saveTimerState();
+        }
+
+        // 表示更新
+        function updateDisplay() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = Math.floor(remainingSeconds % 60);
+            const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+            if (!isDisplayMode) {
+                document.getElementById('statusDisplay').textContent = `実行中: ${display}`;
+            }
+        }
+
+        // 時間フォーマット
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // 履歴クリア
+        function clearHistory() {
+            if (confirm('履歴をすべて削除してもよろしいですか？')) {
+                timerHistory = [];
+                saveHistory();
+                updateHistoryDisplay();
+            }
+        }
+
+        // 通知音
+        function playNotificationSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // 初期化
+        initializeMode();
+
+        // 表示画面の場合、定期的に同期
+        if (isDisplayMode) {
+            setInterval(syncDisplay, 100);
+        }
+    </script>
+</body>
+</html>

@@ -308,6 +308,7 @@
         function initializeMode() {
             const params = new URLSearchParams(window.location.search);
             isDisplayMode = params.get('mode') === 'display';
+            console.log('Display Mode:', isDisplayMode);
 
             if (isDisplayMode) {
                 document.getElementById('displaySection').classList.remove('hidden');
@@ -347,11 +348,14 @@
             if (remainingSeconds <= 0) {
                 displaySection.classList.remove('warning');
                 displaySection.classList.add('timeout');
+                document.getElementById('timerLabel').textContent = 'タイムオーバー';
             } else if (remainingSeconds <= 10) {
                 displaySection.classList.add('warning');
                 displaySection.classList.remove('timeout');
+                document.getElementById('timerLabel').textContent = '残り10秒以下';
             } else {
                 displaySection.classList.remove('warning', 'timeout');
+                document.getElementById('timerLabel').textContent = '実行中';
             }
         }
 
@@ -408,19 +412,14 @@
             document.getElementById('minutesInput').disabled = true;
             document.getElementById('secondsInput').disabled = true;
 
-            // 状態をlocalStorageに保存（表示画面と同期）
-            saveTimerState();
-
-            timerInterval = setInterval(updateTimer, 100);
-        }
-
-        // タイマー状態を保存
-        function saveTimerState() {
+            // localStorageで同期
             localStorage.setItem('timerState', JSON.stringify({
                 remainingSeconds: remainingSeconds,
-                isRunning: isRunning,
+                isRunning: true,
                 totalSeconds: totalSeconds
             }));
+
+            timerInterval = setInterval(updateTimer, 100);
         }
 
         // タイマー更新
@@ -430,24 +429,31 @@
             if (remainingSeconds <= 0) {
                 remainingSeconds = 0;
                 clearInterval(timerInterval);
-                timerInterval = null;
                 isRunning = false;
-                saveTimerState();
                 timerTimeout();
                 return;
             }
 
             updateDisplay();
-            saveTimerState();
+            localStorage.setItem('timerState', JSON.stringify({
+                remainingSeconds: remainingSeconds,
+                isRunning: true,
+                totalSeconds: totalSeconds
+            }));
+        }
+
+        // 表示更新
+        function updateDisplay() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = Math.floor(remainingSeconds % 60);
+            const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+            document.getElementById('statusDisplay').textContent = `実行中: ${display}`;
         }
 
         // タイムオーバー
         function timerTimeout() {
-            if (!isDisplayMode) {
-                document.getElementById('statusDisplay').textContent = 'タイムオーバー';
-            }
-
-            // 音声通知（オプション）
+            document.getElementById('statusDisplay').textContent = 'タイムオーバー';
             playNotificationSound();
 
             // 履歴に記録
@@ -466,6 +472,12 @@
             document.getElementById('pauseBtn').disabled = true;
             document.getElementById('minutesInput').disabled = false;
             document.getElementById('secondsInput').disabled = false;
+
+            localStorage.setItem('timerState', JSON.stringify({
+                remainingSeconds: 0,
+                isRunning: false,
+                totalSeconds: totalSeconds
+            }));
         }
 
         // 一時停止
@@ -479,45 +491,36 @@
                 // 一時停止
                 isRunning = false;
                 clearInterval(timerInterval);
-                timerInterval = null;
                 document.getElementById('pauseBtn').textContent = '再開';
             }
-            saveTimerState();
+
+            localStorage.setItem('timerState', JSON.stringify({
+                remainingSeconds: remainingSeconds,
+                isRunning: isRunning,
+                totalSeconds: totalSeconds
+            }));
         }
 
         // リセット
         function resetTimer() {
             clearInterval(timerInterval);
-            timerInterval = null;
             isRunning = false;
             remainingSeconds = 0;
             totalSeconds = 0;
 
-            if (!isDisplayMode) {
-                document.getElementById('statusDisplay').textContent = '準備完了';
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('pauseBtn').disabled = true;
-                document.getElementById('pauseBtn').textContent = '一時停止';
-                document.getElementById('minutesInput').disabled = false;
-                document.getElementById('secondsInput').disabled = false;
-            }
-
             document.getElementById('timerDisplay').textContent = '00:00';
-            document.getElementById('timerLabel').textContent = '準備完了';
-            document.getElementById('displaySection').classList.remove('warning', 'timeout');
+            document.getElementById('statusDisplay').textContent = '準備完了';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('pauseBtn').textContent = '一時停止';
+            document.getElementById('minutesInput').disabled = false;
+            document.getElementById('secondsInput').disabled = false;
 
-            saveTimerState();
-        }
-
-        // 表示更新
-        function updateDisplay() {
-            const mins = Math.floor(remainingSeconds / 60);
-            const secs = Math.floor(remainingSeconds % 60);
-            const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            document.getElementById('timerDisplay').textContent = display;
-            if (!isDisplayMode) {
-                document.getElementById('statusDisplay').textContent = `実行中: ${display}`;
-            }
+            localStorage.setItem('timerState', JSON.stringify({
+                remainingSeconds: 0,
+                isRunning: false,
+                totalSeconds: 0
+            }));
         }
 
         // 時間フォーマット

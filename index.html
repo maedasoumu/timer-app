@@ -24,16 +24,16 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: #ffffff;
+            background-color: #ffffff !important;
             transition: background-color 0.3s ease;
         }
 
         .display-mode.warning {
-            background-color: #ffeb3b;
+            background-color: #ffeb3b !important;
         }
 
         .display-mode.timeout {
-            background-color: #f44336;
+            background-color: #f44336 !important;
         }
 
         .timer-display {
@@ -497,16 +497,19 @@
             const displaySection = document.getElementById('displaySection');
             if (displaySection) {
                 displaySection.classList.remove('warning', 'timeout');
+                displaySection.style.backgroundColor = '#ffffff';
             }
             
             const timerDisplay = document.getElementById('timerDisplay');
             if (timerDisplay) {
                 timerDisplay.textContent = '00:00';
+                timerDisplay.style.color = '#333';
             }
             
             const timerLabel = document.getElementById('timerLabel');
             if (timerLabel) {
                 timerLabel.textContent = '準備完了';
+                timerLabel.style.color = '#666';
             }
 
             if (!isDisplayMode) {
